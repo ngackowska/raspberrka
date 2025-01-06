@@ -2,8 +2,7 @@ from gpiozero import LED
 from time import sleep
 
 
-class diodes:
-
+class Diodes:
     redPin = 17
     yellowPin = 27
     bluePin = 22
@@ -12,56 +11,12 @@ class diodes:
     ledYellow = LED(yellowPin)
     ledBlue = LED(bluePin)
 
-    def setup(self):
-        self.ledRed.off()
-        self.ledYellow.off()
-        self.ledBlue.off()
-
-    def turnRed(self):
-        self.ledRed.on()
-        self.ledYellow.off()
-        self.ledBlue.off()
-
-
-    def turnYellow(self):
-        self.ledRed.off()
-        self.ledYellow.on()
-        self.ledBlue.off()
-
-
-    def turnBlue(self):
-        self.ledRed.off()
-        self.ledYellow.off()
-        self.ledBlue.on()
-
-
-    def turnOrange(self):
-        self.ledRed.on()
-        self.ledYellow.on()
-        self.ledBlue.off()
-
-
-    def turnPurple(self):
-        self.ledRed.on()
-        self.ledYellow.off()
-        self.ledBlue.on()
-
-
-    def turnGreen(self):
-        self.ledRed.off()
-        self.ledYellow.on()
-        self.ledBlue.on()
-
-
-    def turnWhite(self):
-        self.ledRed.on()
-        self.ledYellow.on()
-        self.ledBlue.on()
-
-
-    def turnNull(self):
-        self.ledRed.off()
-        self.ledYellow.off()
-        self.ledBlue.off()
+    def turnOn(self, red=False, yellow=False, blue=False):
+        if red: self.ledRed.on()
+        else: self.ledRed.off()
+        if yellow: self.ledYellow.on()
+        else: self.ledYellow.off()
+        if blue: self.ledBlue.on()
+        else: self.ledBlue.off()
 
 
