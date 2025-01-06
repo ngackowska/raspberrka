@@ -24,32 +24,17 @@ import mediapipe as mp
 from keypoint_classifier.keypoint_classifier import KeyPointClassifier 
 from point_history_classifier.point_history_classifier import PointHistoryClassifier
 
-
-
-
-
-import threading
 import queue
-import os
 
 picam2 = Picamera2()
 picam2.start()
 
 
-
-
-
-def main():
-    can = True
-
+def main(): 
     prev = 0
     prev_count = 0
     prevs = []
 
-    # create a queue to send commands from the main thread
-    q = queue.Queue()
-  # note: thread is auto-starting
-    # q.put(f"Witaj")
     word_save = False
 
     word = ""
@@ -59,6 +44,7 @@ def main():
     cap_width = 960
     cap_height = 540
 
+    #do wyswietlania recta
     use_brect = True
 
     # Camera preparation ###############################################################
@@ -87,8 +73,6 @@ def main():
         ]
 
     # Coordinate history #################################################################
-    history_length = 16
-    point_history = deque(maxlen=history_length)
     hands = mp_hands.Hands(
         static_image_mode=False,
         max_num_hands=2,
@@ -142,19 +126,14 @@ def main():
 
                 # Hand sign classification
                 hand_sign_id = keypoint_classifier(pre_processed_landmark_list)
-                if hand_sign_id == 2:  # Point gesture
-                    point_history.append(landmark_list[8])
-                else:
-                    point_history.append([0, 0])
 
                 if hand_label == "Left":
                     if hand_sign_id == 3:
                         word_save = True
                     elif hand_sign_id == 0:
-                        q.put(word)
                         word = ""
 
-                if hand_label == "Left" and hand_sign_id ==7 and can == True:
+                if hand_label == "Left" and hand_sign_id ==7:
                     heil_mode = True
 
                 if hand_label == "Right":
@@ -167,7 +146,7 @@ def main():
 
                             if hand_sign_id == 6 and heil_mode:
                                 heil_mode = False
-                                can = False
+                                
 
                             # q.put(keypoint_classifier_labels[prevs[-1]])    # tu można dac którego jest najwięcej
                             if word_save:
@@ -191,8 +170,6 @@ def main():
                     handedness,
                     keypoint_classifier_labels[hand_sign_id],
                 )
-        else:
-            point_history.append([0, 0])
 
         debug_image = draw_info(debug_image, mode, number)
 
@@ -260,8 +237,6 @@ def pre_process_landmark(landmark_list):
 
 
 def logging_csv(number, mode, landmark_list):
-    if mode == 0:
-        pass
     if mode == 1 and (0 <= number <= 9):
         csv_path = 'model/keypoint_classifier/keypoint.csv'
         with open(csv_path, 'a', newline="") as f:
