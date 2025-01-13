@@ -98,10 +98,12 @@ def main():
                             mylcd.lcd_display_string("Lewo", 2)
                             if(prevServo == -1):
                                 servo.rotateMiddle()
+                                prevServo = 0
+                                sleep(1)
                             else:
                                 servo.rotateRight()
-                            prevServo+=1
-                            sleep(1)
+                                prevServo = 1
+                                sleep(1)
                             print(keypoint_classifier_labels[2])
 
                     # Jeżeli wykryta ręka jest prawa
@@ -114,10 +116,12 @@ def main():
                                 mylcd.lcd_display_string("Prawo", 2)
                                 if(prevServo == 1):
                                     servo.rotateMiddle()
+                                    prevServo = 0
+                                    sleep(1)
                                 else:
                                     servo.rotateLeft()
-                                prevServo-=1
-                                sleep(1)
+                                    prevServo = -1
+                                    sleep(1)
                                 print(keypoint_classifier_labels[1])
                             case 3:
                                 diod_control(keypoint_classifier_labels, 3, True, True, False)
