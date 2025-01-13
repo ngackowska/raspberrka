@@ -15,7 +15,7 @@ picam2 = Picamera2()
 picam2.start()
 
 diod = Diodes()
-# servo = ServoControl()
+servo = ServoControl()
 
 
 def main():
@@ -102,10 +102,11 @@ def main():
 
                 # Jeżeli wykryta ręka jest lewa
                 if left_or_right == "Left":
-                    if (hand_sign_id == 1):
-                        diod.turnOn(red=True, yellow=False, blue=False)
-                        # servo.rotateRight()
-                        print("left")
+                    if (hand_sign_id == 2):
+                        # diod.turnOn(red=True, yellow=False, blue=False)
+                        servo.rotateRight()
+                        sleep(1)
+                        print(keypoint_classifier_labels[2])
 
                     #tu wykrywanie gestow sterujących
 
@@ -113,10 +114,34 @@ def main():
                 if left_or_right == "Right":
                     
                     prev = left_or_right
-                    if (hand_sign_id == 2):
+                    if (hand_sign_id == 1):
+                        servo.rotateLeft()
+                        sleep(1)
+                        print(keypoint_classifier_labels[1])
+                    if (hand_sign_id == 3):
+                        diod.turnOn(red=True, yellow=True, blue=False)
+                        print(keypoint_classifier_labels[3])
+                    if (hand_sign_id == 4):
                         diod.turnOn(red=False, yellow=True, blue=False)
-                        # servo.rotateLeft()
-                        print("right")
+                        print(keypoint_classifier_labels[4])
+                    if (hand_sign_id == 5):
+                        diod.turnOn(red=False, yellow=False, blue=True)
+                        print(keypoint_classifier_labels[5])
+                    if (hand_sign_id == 6):
+                        diod.turnOn(red=True, yellow=False, blue=False)
+                        print(keypoint_classifier_labels[6])                    
+                    if (hand_sign_id == 7):
+                        diod.turnOn(red=False, yellow=False, blue=False)
+                        print(keypoint_classifier_labels[7])                    
+                    if (hand_sign_id == 8):
+                        diod.turnOn(red=True, yellow=True, blue=True) 
+                        print(keypoint_classifier_labels[8])                   
+                    if (hand_sign_id == 9):
+                        diod.turnOn(red=True, yellow=False, blue=True)
+                        print(keypoint_classifier_labels[9]) 
+                    if (hand_sign_id == 0):
+                        diod.turnOn(red=False, yellow=True, blue=True) 
+                        print(keypoint_classifier_labels[0])
                         
                     
 
