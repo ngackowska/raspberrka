@@ -2,134 +2,147 @@ from time import sleep
 import cv2 as cv
 import csv
 import copy
-import itertools
 import numpy as np
 from picamera2 import Picamera2
 import mediapipe as mp
 
 from keypoint_classifier.keypoint_classifier import KeyPointClassifier 
 from diod_control import Diodes
+from servocontrol import ServoControl
 
 
 picam2 = Picamera2()
 picam2.start()
 
-
-# def main():
-prev = 0
-prev_count = 0
-prevs = []
-
-# Ładownie modelu
-
-mp_hands = mp.solutions.hands
-hands = mp_hands.Hands(
-    static_image_mode=False,
-    max_num_hands=2,
-    min_detection_confidence=0.7,
-    min_tracking_confidence=0.5,
-)
-
-# keypoint_classifier = KeyPointClassifier()
+diod = Diodes()
+# servo = ServoControl()
 
 
-# Czytanie etykiet keypointów 
+def main():
+    prev = 0
+    prev_count = 0
+    prevs = []
 
-# label_file = open('keypoint_classifier/keypoint_classifier_label.csv',encoding='utf-8-sig')
-# keypoint_classifier_labels_raw = csv.reader(label_file)
-# keypoint_classifier_labels = []
-# for row in keypoint_classifier_labels_raw:
-#     keypoint_classifier_labels.append(row[0])
-# label_file.close()
+    # Ładownie modelu
 
-# mode = 0
+    mp_hands = mp.solutions.hands
+    hands = mp_hands.Hands(
+        static_image_mode=False,
+        max_num_hands=2,
+        min_detection_confidence=0.7,
+        min_tracking_confidence=0.5,
+    )
+
+    keypoint_classifier = KeyPointClassifier()
 
 
-# mp_draw = mp.solutions.drawing_utils
+    # Czytanie etykiet keypointów 
+
+    label_file = open('keypoint_classifier/keypoint_classifier_label.csv',encoding='utf-8-sig')
+    keypoint_classifier_labels_raw = csv.reader(label_file)
+    keypoint_classifier_labels = []
+    for row in keypoint_classifier_labels_raw:
+        keypoint_classifier_labels.append(row[0])
+    label_file.close()
+
+    mode = 0
+
+
+    mp_draw = mp.solutions.drawing_utils
 
 
 
-while True:
-    # Wychodzenie z programu za pomocą q
-    key = cv.waitKey(10)
-    if key & 0xFF == ord('q'):
-        break
+    while True:
+        # Wychodzenie z programu za pomocą q
+        key = cv.waitKey(10)
+        if key & 0xFF == ord('q'):
+            # servo.delete()
+            sleep(1)
+            break
 
-    # Ustalanie trybu (uczenie / czytanie gestów)
-    # num, mode = mode_selection(key, mode)
+        # Ustalanie trybu (uczenie / czytanie gestów)
+        num, mode = mode_selection(key, mode)
 
-    # Przechwytywanie obrazu
-    frame = picam2.capture_array()
+        # Przechwytywanie obrazu
+        frame = picam2.capture_array()
+        
+        frame = cv.flip(frame, 0)
+        debug_frame = copy.deepcopy(frame)
+
+        # Detekcja ruchów
+
+        frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+
+        frame.flags.writeable = False
+        results = hands.process(frame)
+        frame.flags.writeable = True
+
+
+        if results.multi_hand_landmarks is not None:
+            for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
+                mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+                # Etykieta czy wykryta raka jest lewa czy prawa
+                left_or_right = handedness.classification[0].label
+
+                # Obliczanie wymiarów obramówki ręki
+                border = calc_border(debug_frame, hand_landmarks)
+
+                # Obliczanie pozycji landmarków
+                landmark_list = create_landmark_list_in_pixels(debug_frame, hand_landmarks)
+
+                # Normalizacja pozycji landmarków
+                normalised_landmark_list = normalise_landmark(landmark_list)
+
+                # Wpisaywanie pozycji landmarków do pliku z nauczonymi gestami
+                logging_csv(num, mode, normalised_landmark_list)
+
+                # Klasyfikacja gestów jako identyfikatorów gestów
+                hand_sign_id = keypoint_classifier(normalised_landmark_list)
+
+                # Jeżeli wykryta ręka jest lewa
+                if left_or_right == "Left":
+                    if (hand_sign_id == 1):
+                        diod.turnOn(red=True, yellow=False, blue=False)
+                        # servo.rotateRight()
+                        print("left")
+
+                    #tu wykrywanie gestow sterujących
+
+                # Jeżeli wykryta ręka jest prawa
+                if left_or_right == "Right":
+                    
+                    prev = left_or_right
+                    if (hand_sign_id == 2):
+                        diod.turnOn(red=False, yellow=True, blue=False)
+                        # servo.rotateLeft()
+                        print("right")
+                        
+                    
+
+
+                    #tu wykrywanie gestow alfabetu
+
+        #Rysowanie obramówki  i informacji o wykrytym geście
+                debug_frame = draw_border(debug_frame, border)
+                debug_frame = draw_info_text(
+                    debug_frame,
+                    border,
+                    handedness,
+                    keypoint_classifier_labels[hand_sign_id],
+                )
+        
+        # Wykonanie rysowania 
+        debug_frame = draw_info(debug_frame, mode, num)
+
+        # Wyświetlenie ramki  
+        cv.imshow("Wykrywanie gestow", frame)
+        
+    # Zamknięcie kamery i zamknięcie okien
+    picam2.close()
+    cv.destroyAllWindows()
+
     
-    frame = cv.flip(frame, 0)
-    # debug_frame = copy.deepcopy(frame)
-
-    # Detekcja ruchów
-
-    frame = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-
-    frame.flags.writeable = False
-    results = hands.process(frame)
-    frame.flags.writeable = True
-
-
-    # if results.multi_hand_landmarks:
-        # for hand_landmarks, handedness in zip(results.multi_hand_landmarks, results.multi_handedness):
-            # mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-
-    #         # Etykieta czy wykryta raka jest lewa czy prawa
-    #         left_or_right = handedness.classification[0].label
-
-    #         # Obliczanie wymiarów obramówki ręki
-    #         border = calc_border(debug_frame, hand_landmarks)
-
-    #         # Obliczanie pozycji landmarków
-    #         landmark_list = create_landmark_list_in_pixels(debug_frame, hand_landmarks)
-
-    #         # Normalizacja pozycji landmarków
-    #         normalised_landmark_list = normalise_landmark(landmark_list)
-
-    #         # Wpisaywanie pozycji landmarków do pliku z nauczonymi gestami
-    #         logging_csv(num, mode, normalised_landmark_list)
-
-    #         # Klasyfikacja gestów jako identyfikatorów gestów
-    #         hand_sign_id = keypoint_classifier(normalised_landmark_list)
-
-    #         # Jeżeli wykryta ręka jest lewa
-    #         if left_or_right == "Left":
-    #             print("left")
-
-    #             #tu wykrywanie gestow sterujących
-
-    #         # Jeżeli wykryta ręka jest prawa
-    #         if left_or_right == "Right":
-    #             print("right")
-
-
-
-    #             #tu wykrywanie gestow alfabetu
-
-    #              # mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-       # Rysowanie obramówki  i informacji o wykrytym geście
-    #         debug_frame = draw_border(debug_frame, border)
-    #         debug_frame = draw_info_text(
-    #             debug_frame,
-    #             border,
-    #             handedness,
-    #             keypoint_classifier_labels[hand_sign_id],
-    #         )
-    
-    # # Wykonanie rysowania 
-    # debug_frame = draw_info(debug_frame, mode, num)
-
-    # Wyświetlenie ramki  
-    cv.imshow("Wykrywanie gestów", frame)
-    
-# Zamknięcie kamery i zamknięcie okien
-picam2.close()
-cv.destroyAllWindows()
-
-key = cv.waitKey(1)
 
 
 
@@ -213,7 +226,7 @@ def normalise_landmark(landmark_list):
 # Wpisywanie zebranych danych do pliku 
 def logging_csv(num, mode, landmark_list):
     if mode == 1 and (0 <= num <= 9):
-        csv_path = 'model/keypoint_classifier/keypoint.csv'
+        csv_path = 'keypoint_classifier/keypoint.csv'
 
         model_file = open(csv_path, 'a', newline="")
         writer = csv.writer(model_file)
@@ -273,9 +286,8 @@ def draw_info(frame, mode, num):
     return frame
 
 
-
-# if __name__ == '__main__':
-#     main()
+if __name__ == '__main__':
+    main()
 
 
 
